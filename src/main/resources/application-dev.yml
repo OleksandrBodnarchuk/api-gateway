@@ -8,6 +8,22 @@ spring:
           discovery:
             locator:
               enabled: true
+              lower-case-service-id: true
+          routes:
+            - id: users-status-check
+              uri: lb://users-service
+              predicates:
+                - Path=/users/status/check
+                - Method=GET
+              filters:
+                - RemoveRequestHeader=Cookie
+            - id: accounts-status-check
+              uri: lb://accounts-service
+              predicates:
+                - Path=/accounts/status/check
+                - Method=GET
+              filters:
+                - RemoveRequestHeader=Cookie
 server:
   port: 8082
 
