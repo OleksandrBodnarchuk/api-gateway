@@ -17,10 +17,11 @@ spring:
                 - Method=GET
               filters:
                 - RemoveRequestHeader=Cookie
+                - RewritePath=/users/(?<segment>.*), /api/v1/users/${segment}
             - id: accounts-status-check
               uri: lb://accounts-service
               predicates:
-                - Path=/accounts/status/check
+                - Path=/accounts/**
                 - Method=GET
               #                Sets dates when this route should be available. For example for deployment
               #                - After=2025-07-15T08:15:00+02:00
@@ -28,8 +29,8 @@ spring:
               #                - Between=2025-07-15T08:00:00+02:00,2025-07-15T08:12:00+02:00
               filters:
                 - RemoveRequestHeader=Cookie
-    #                Manually set internal path for request. Predicate should be updated as well to match expected path.
-    #                - RewritePath=/accounts-service/(?<segment>.*), /${segment}
+                #                Manually set internal path for request. Predicate should be updated as well to match expected path.
+                - RewritePath=/accounts/(?<segment>.*), /api/v1/accounts/${segment}
 
 gateway:
   access:
