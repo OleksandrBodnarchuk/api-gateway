@@ -10,6 +10,13 @@ spring:
               enabled: true
               lower-case-service-id: true
           routes:
+            - id: auth-status-check
+              uri: lb://auth-service
+              predicates:
+                - Path=/auth/status/check
+                - Method=GET
+              filters:
+                - RewritePath=/auth/(?<segment>.*), /api/v1/auth/${segment}
             - id: users-status-check
               uri: lb://users-service
               predicates:
