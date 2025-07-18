@@ -17,6 +17,13 @@ spring:
                 - Method=GET
               filters:
                 - RewritePath=/auth/(?<segment>.*), /api/v1/auth/${segment}
+            - id: authorization
+              uri: lb://auth-service
+              predicates:
+                - Path=/login
+                - Method=POST
+              filters:
+                - RewritePath=/login, /api/v1/auth/login
             - id: users-status-check
               uri: lb://users-service
               predicates:
@@ -41,6 +48,9 @@ spring:
 
 gateway:
   access:
+    open-endpoints:
+      - /login
+      - /register
     time-window:
       enabled: false
       start: 2025-07-15T08:00:00+02:00
