@@ -28,6 +28,5 @@ public class JwtUtil {
 
     public boolean isTokenValid(String token) {
         return extractClaims(token).getExpiration().after(new Date());
-
     }
 }

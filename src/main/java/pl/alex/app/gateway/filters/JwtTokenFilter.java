@@ -1,5 +1,7 @@
 package pl.alex.app.gateway.filters;
 
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -10,44 +12,51 @@ import pl.alex.app.gateway.configuration.GatewayAccessProperties;
 import pl.alex.app.gateway.util.JwtUtil;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-
+@Slf4j
 public class JwtTokenFilter implements GlobalFilter, Ordered {
 
-    private final JwtUtil jwtUtil;
-    private final List<String> openEndpoints;
-    private final GatewayAccessProperties.TimeWindow timeWindow;
+  private final JwtUtil jwtUtil;
+  private final List<String> openEndpoints;
+  private final GatewayAccessProperties.TimeWindow timeWindow;
 
-    public JwtTokenFilter(JwtUtil jwtUtil, GatewayAccessProperties properties) {
-        this.jwtUtil = jwtUtil;
-        this.openEndpoints = properties.getOpenEndpoints();
-        this.timeWindow = properties.getTimeWindow();
+  public JwtTokenFilter(JwtUtil jwtUtil, GatewayAccessProperties properties) {
+    this.jwtUtil = jwtUtil;
+    this.openEndpoints = properties.getOpenEndpoints();
+    this.timeWindow = properties.getTimeWindow();
+  }
+
+  @Override
+  public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    String path = exchange.getRequest().getURI().getPath();
+
+    if (openEndpoints.stream().anyMatch(path::startsWith)) {
+      return chain.filter(exchange);
+    }
+    String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+      exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+      return exchange.getResponse().setComplete();
     }
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
-
-        if (openEndpoints.stream().anyMatch(path::startsWith)) {
-            return chain.filter(exchange);
-        }
-        String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
-        }
-
-        String token = authHeader.substring(7);
-        if (!jwtUtil.isTokenValid(token)) {
-            exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
-            return exchange.getResponse().setComplete();
-        }
-
-        return chain.filter(exchange);
+    String token = authHeader.substring(7);
+    try {
+      if (!jwtUtil.isTokenValid(token)) {
+        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+        return exchange.getResponse().setComplete();
+      }
+    } catch (Exception ex) {
+      log.error("[{}] - Error while validating JWT: {}",
+          this.getClass().getSimpleName(),
+          ex.getMessage(), ex);
+      exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+      return exchange.getResponse().setComplete();
     }
 
-    @Override
-    public int getOrder() {
-        return Integer.MIN_VALUE; // високий пріоритет
-    }
+    return chain.filter(exchange);
+  }
+
+  @Override
+  public int getOrder() {
+    return Integer.MIN_VALUE; // високий пріоритет
+  }
 }
